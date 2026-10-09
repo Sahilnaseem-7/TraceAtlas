@@ -1,61 +1,74 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import get_db
-from app.core.security import get_password_hash, verify_password, create_access_token, get_current_user
-from app.models.models import User, Organization, Workspace, Membership, Role
-from app.schemas.schemas import UserCreate, UserResponse, Token, WorkspaceCreate, WorkspaceResponse
-import uuid
+from app.core.security import create_access_token, get_current_user, get_password_hash, verify_password
+from app.models.models import Membership, Organization, Role, User, Workspace
+from app.schemas.schemas import LoginRequest, Token, UserCreate, UserResponse, WorkspaceResponse
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.post("/register", response_model=UserResponse)
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == user_in.email))
+    email = user_in.email.lower().strip()
+    result = await db.execute(select(User).where(User.email == email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
+        raise HTTPException(status_code=409, detail="Email already registered")
+
     new_user = User(
-        id=uuid.uuid4(),
-        email=user_in.email,
+        id=uuid4(),
+        email=email,
         hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name
+        full_name=user_in.full_name.strip(),
     )
     db.add(new_user)
     await db.flush()
 
-    # Create default org and workspace
-    org = Organization(id=uuid.uuid4(), name=f"{user_in.full_name}'s Org")
+    org = Organization(id=uuid4(), name=f"{new_user.full_name}'s Organization")
     db.add(org)
     await db.flush()
 
-    ws = Workspace(id=uuid.uuid4(), org_id=org.id, name="Default Workspace")
-    db.add(ws)
+    workspace = Workspace(id=uuid4(), org_id=org.id, name="Default Workspace")
+    db.add(workspace)
     await db.flush()
 
-    membership = Membership(user_id=new_user.id, workspace_id=ws.id, role=Role.OWNER)
-    db.add(membership)
-    
+    db.add(Membership(user_id=new_user.id, workspace_id=workspace.id, role=Role.OWNER))
+    await db.flush()
     return new_user
 
+
 @router.post("/login", response_model=Token)
-async def login(email: str, password: str, db: AsyncSession = Depends(get_db)):
-    # Note: FastAPI OAuth2PasswordRequestForm is usually used, but for simplicity:
-    result = await db.execute(select(User).where(User.email == email))
+async def login(login_in: LoginRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email == login_in.email))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
-    
-    access_token = create_access_token(data={"sub": str(user.id)})
-    return {"access_token": access_token, "token_type": "bearer"}
+    if not user or not verify_password(login_in.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {"access_token": create_access_token(data={"sub": str(user.id)}), "token_type": "bearer"}
+
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+
 @router.get("/workspaces", response_model=list[WorkspaceResponse])
-async def get_workspaces(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_workspaces(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Workspace).join(Membership).where(Membership.user_id == current_user.id)
+        select(Workspace)
+        .join(Membership, Membership.workspace_id == Workspace.id)
+        .where(Membership.user_id == current_user.id)
+        .order_by(Workspace.created_at.asc())
     )
     return result.scalars().all()

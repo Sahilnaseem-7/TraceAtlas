@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, Integer, Enum as SAEnum, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Uuid
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import enum
@@ -15,35 +15,35 @@ class Role(str, enum.Enum):
 
 class Organization(Base):
     __tablename__ = "organizations"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
 
 class Workspace(Base):
     __tablename__ = "workspaces"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(Uuid(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
     name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Membership(Base):
     __tablename__ = "memberships"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
     role = Column(SAEnum(Role), nullable=False, default=Role.DATA_SCIENTIST)
 
 class Dataset(Base):
     __tablename__ = "datasets"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text)
     source = Column(String)
@@ -56,8 +56,8 @@ class Dataset(Base):
 
 class DatasetVersion(Base):
     __tablename__ = "dataset_versions"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dataset_id = Column(Uuid(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
     version_tag = Column(String, nullable=False)
     record_count = Column(Integer)
     column_count = Column(Integer)
@@ -79,36 +79,36 @@ class AssetType(str, enum.Enum):
 
 class LineageEdge(Base):
     __tablename__ = "lineage_edges"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
     source_type = Column(SAEnum(AssetType), nullable=False)
-    source_id = Column(UUID(as_uuid=True), nullable=False)
+    source_id = Column(Uuid(as_uuid=True), nullable=False)
     target_type = Column(SAEnum(AssetType), nullable=False)
-    target_id = Column(UUID(as_uuid=True), nullable=False)
+    target_id = Column(Uuid(as_uuid=True), nullable=False)
     relationship_type = Column(String, nullable=False)
     edge_metadata = Column(JSON)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Model(Base):
     __tablename__ = "models"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class ModelVersion(Base):
     __tablename__ = "model_versions"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    model_id = Column(UUID(as_uuid=True), ForeignKey("models.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    model_id = Column(Uuid(as_uuid=True), ForeignKey("models.id"), nullable=False)
     version_tag = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Document(Base):
     __tablename__ = "documents"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
-    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"))
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    dataset_id = Column(Uuid(as_uuid=True), ForeignKey("datasets.id"))
     doc_type = Column(String)
     name = Column(String, nullable=False)
     file_path = Column(String)
@@ -116,22 +116,22 @@ class Document(Base):
 
 class GovernanceReview(Base):
     __tablename__ = "governance_reviews"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
-    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    dataset_id = Column(Uuid(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
     status = Column(String, default="pending")
     findings = Column(Text)
-    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reviewer_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(Uuid(as_uuid=True), ForeignKey("workspaces.id"), nullable=False)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"))
     event_type = Column(String, nullable=False)
     resource_type = Column(String)
-    resource_id = Column(UUID(as_uuid=True))
+    resource_id = Column(Uuid(as_uuid=True))
     details = Column(JSON)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

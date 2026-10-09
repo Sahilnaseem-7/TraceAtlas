@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
 });
 
 api.interceptors.request.use((config) => {
@@ -15,7 +15,7 @@ api.interceptors.request.use((config) => {
 });
 
 export const authApi = {
-  login: (email: string, password: string) => api.post('/api/auth/login', null, { params: { email, password } }),
+  login: (email: string, password: string) => api.post('/api/auth/login', { email, password }),
   register: (data: { email: string; password: string; full_name: string }) => api.post('/api/auth/register', data),
   getWorkspaces: () => api.get('/api/auth/workspaces'),
 };
@@ -24,11 +24,13 @@ export const datasetApi = {
   list: (workspaceId: string) => api.get(`/api/datasets/?workspace_id=${workspaceId}`),
   create: (workspaceId: string, data: any) => api.post(`/api/datasets/?workspace_id=${workspaceId}`, data),
   get: (id: string) => api.get(`/api/datasets/${id}`),
+  versions: (id: string) => api.get(`/api/datasets/${id}/versions`),
+  update: (id: string, data: Record<string, unknown>) => api.patch(`/api/datasets/${id}`, data),
   uploadVersion: (id: string, tag: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post(`/api/datasets/${id}/versions?version_tag=${tag}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      
     });
   }
 };

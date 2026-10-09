@@ -1,125 +1,158 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Any, Dict
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
 
-# Auth & Users
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.models.models import AssetType
+
+
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
-    full_name: str
+    password: str = Field(min_length=8, max_length=128)
+    full_name: str = Field(min_length=1, max_length=120)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        return value.strip()
+
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     email: str
     full_name: str
-    class Config:
-        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: str = "bearer"
 
-# Workspaces
+
 class WorkspaceCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=120)
+
 
 class WorkspaceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     name: str
     org_id: UUID
-    class Config:
-        from_attributes = True
 
-# Datasets
+
 class DatasetCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    source: Optional[str] = None
-    owner: Optional[str] = None
-    format: Optional[str] = None
-    tags: List[str] = []
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
+    source: str | None = Field(default=None, max_length=500)
+    owner: str | None = Field(default=None, max_length=200)
+    format: str | None = Field(default=None, max_length=50)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+
+
+class DatasetUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
+    source: str | None = Field(default=None, max_length=500)
+    owner: str | None = Field(default=None, max_length=200)
+    format: str | None = Field(default=None, max_length=50)
+    tags: list[str] | None = Field(default=None, max_length=50)
+    governance_status: str | None = Field(default=None, max_length=50)
+
 
 class DatasetResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     workspace_id: UUID
     name: str
-    description: Optional[str]
-    source: Optional[str]
-    owner: Optional[str]
-    format: Optional[str]
-    tags: List[str]
+    description: str | None
+    source: str | None
+    owner: str | None
+    format: str | None
+    tags: list[str]
     governance_status: str
     created_at: datetime
-    class Config:
-        from_attributes = True
+
 
 class DatasetVersionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     dataset_id: UUID
     version_tag: str
-    record_count: Optional[int]
-    column_count: Optional[int]
-    schema_snapshot: Optional[Dict[str, Any]]
-    content_hash: Optional[str]
-    profile_results: Optional[Dict[str, Any]]
+    record_count: int | None
+    column_count: int | None
+    schema_snapshot: dict[str, Any] | None
+    content_hash: str | None
+    profile_results: dict[str, Any] | None
     created_at: datetime
-    class Config:
-        from_attributes = True
 
-# Lineage
+
 class LineageEdgeCreate(BaseModel):
-    source_type: str
+    source_type: AssetType
     source_id: UUID
-    target_type: str
+    target_type: AssetType
     target_id: UUID
-    relationship_type: str
+    relationship_type: str = Field(min_length=1, max_length=100)
+
 
 class LineageEdgeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
-    source_type: str
+    source_type: AssetType
     source_id: UUID
-    target_type: str
+    target_type: AssetType
     target_id: UUID
     relationship_type: str
-    class Config:
-        from_attributes = True
 
-# Models
+
 class ModelCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+
 
 class ModelResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     name: str
-    description: Optional[str]
+    description: str | None
     created_at: datetime
-    class Config:
-        from_attributes = True
 
-# Governance
+
 class GovernanceReviewCreate(BaseModel):
     dataset_id: UUID
-    findings: Optional[str] = None
+    findings: str | None = None
+
 
 class GovernanceReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     dataset_id: UUID
     status: str
-    findings: Optional[str]
+    findings: str | None
     created_at: datetime
     updated_at: datetime
-    class Config:
-        from_attributes = True
 
-# Audit
+
 class AuditEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     event_type: str
-    resource_type: Optional[str]
-    resource_id: Optional[UUID]
-    details: Optional[Dict[str, Any]]
+    resource_type: str | None
+    resource_id: UUID | None
+    details: dict[str, Any] | None
     created_at: datetime
-    class Config:
-        from_attributes = True

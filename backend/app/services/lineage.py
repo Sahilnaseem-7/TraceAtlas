@@ -1,43 +1,46 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models.models import LineageEdge, AssetType
+from collections import deque
+from typing import Any
 from uuid import UUID
-from typing import List, Dict, Set, Tuple
 
-async def get_downstream_impact(db: AsyncSession, workspace_id: UUID, source_type: str, source_id: UUID) -> List[Dict]:
-    """
-    BFS to find all downstream dependencies.
-    Returns a list of affected assets with their paths.
-    """
-    visited: Set[Tuple[str, UUID]] = set()
-    queue: List[Tuple[str, UUID, List[UUID]]] = [(source_type, source_id, [])]
-    impacts = []
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.models import AssetType, LineageEdge
+
+
+async def get_downstream_impact(
+    db: AsyncSession, workspace_id: UUID, source_type: AssetType | str, source_id: UUID
+) -> list[dict[str, Any]]:
+    """Return each reachable downstream asset once, preserving a shortest discovered path."""
+    if not isinstance(source_type, AssetType):
+        source_type = AssetType(source_type)
+
+    queue = deque([(source_type, source_id, [])])
+    visited: set[tuple[AssetType, UUID]] = set()
+    impacts: list[dict[str, Any]] = []
 
     while queue:
-        curr_type, curr_id, path = queue.pop(0)
-        
-        if (curr_type, curr_id) in visited:
+        current_type, current_id, path = queue.popleft()
+        key = (current_type, current_id)
+        if key in visited:
             continue
-        visited.add((curr_type, curr_id))
+        visited.add(key)
 
-        if curr_type != source_type or curr_id != source_id:
+        if key != (source_type, source_id):
             impacts.append({
-                "type": curr_type,
-                "id": curr_id,
-                "path": path
+                "type": current_type.value,
+                "id": str(current_id),
+                "path": path,
             })
 
-        # Find edges where current node is the source
-        stmt = select(LineageEdge).where(
-            LineageEdge.workspace_id == workspace_id,
-            LineageEdge.source_type == curr_type,
-            LineageEdge.source_id == curr_id
+        result = await db.execute(
+            select(LineageEdge).where(
+                LineageEdge.workspace_id == workspace_id,
+                LineageEdge.source_type == current_type,
+                LineageEdge.source_id == current_id,
+            )
         )
-        result = await db.execute(stmt)
-        edges = result.scalars().all()
-
-        for edge in edges:
-            next_path = path + [edge.target_id]
-            queue.append((edge.target_type.value, edge.target_id, next_path))
+        for edge in result.scalars().all():
+            queue.append((edge.target_type, edge.target_id, path + [str(edge.target_id)]))
 
     return impacts
