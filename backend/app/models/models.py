@@ -86,7 +86,7 @@ class LineageEdge(Base):
     target_type = Column(SAEnum(AssetType), nullable=False)
     target_id = Column(UUID(as_uuid=True), nullable=False)
     relationship_type = Column(String, nullable=False)
-    metadata = Column(JSON)
+    edge_metadata = Column(JSON)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Model(Base):
